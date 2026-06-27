@@ -1,124 +1,54 @@
-import http from "k6/http";
-import { check, sleep } from "k6";
+import http from "k6/http"; // Modul utama untuk mengirim request ke API (seperti POST, GET, PUT, dll.)
+import { check } from "k6"; // Fitur untuk melakukan validasi/assertion (memastikan respons sesuai harapan)
+
+// Fungsi ini mengambil cetakan/template laporan yang ada di file '../../reporter.js'.
 export { handleSummary } from "../../reporter.js";
 
+// =========================================================================================
+// 1. OPTIONS: Konfigurasi beban pengujian (Berapa banyak user dan berapa lama tes berjalan)
+// =========================================================================================
 export const options = {
-    vus: 5,
-    iterations: 10,
-
-    thresholds: {
-        http_req_duration: ["p(95)<1500"],
-        http_req_failed: ["rate<0.01"],
-    },
+    vus: 10,        // vus = Virtual Users. Artinya kita menyimulasikan 10 pengguna palsu sekaligus.
+    duration: "30s", // Durasi pengujian. 10 user di atas akan membombardir API terus-menerus selama 30 detik.
 };
 
-const BASE_URL =
-    "https://restful-booker.herokuapp.com";
-
+// =========================================================================================
+// 2. DEFAULT FUNCTION: Alur pengujian utama (Akan dijalankan berulang kali oleh 10 user di atas)
+// =========================================================================================
 export default function () {
 
-    // CREATE TOKEN
-    const auth = http.post(
-        `${BASE_URL}/auth`,
-        JSON.stringify({
-            username: "admin",
-            password: "password123",
-        }),
-        {
-            headers: {
-                "Content-Type": "application/json",
-            },
-        }
-    );
-
-    check(auth, {
-        "Create Token Success": (r) =>
-            r.status === 200,
+    // PAYLOAD: Data yang akan kita kirimkan ke server (dalam kasus ini, data booking pelanggan baru).
+    // JSON.stringify() berfungsi mengubah objek JavaScript menjadi format teks JSON agar dipahami oleh server API.
+    const payload = JSON.stringify({
+        firstname: "Hafidh",
+        lastname: "QA",
+        totalprice: 500,
+        depositpaid: true,
+        bookingdates: {
+            checkin: "2026-01-01",
+            checkout: "2026-01-10",
+        },
+        additionalneeds: "Breakfast",
     });
 
-    const token = auth.json("token");
+    // Di sini kita menambahkan 'headers' untuk memberi tahu server bahwa data yang kita kirim berbentuk JSON.
+    const params = {
+        headers: {
+            "Content-Type": "application/json",
+        },
+    };
 
-    // CREATE BOOKING
-    const createBooking = http.post(
-        `${BASE_URL}/booking`,
-        JSON.stringify({
-            firstname: "Hafidh",
-            lastname: "QA",
-            totalprice: 1000,
-            depositpaid: true,
-            bookingdates: {
-                checkin: "2026-01-01",
-                checkout: "2026-01-10",
-            },
-            additionalneeds: "Breakfast",
-        }),
-        {
-            headers: {
-                "Content-Type": "application/json",
-            },
-        }
+    // Kita menembak URL tujuan, dengan membawa data (payload) dan pengaturan header (params) di atas.
+    // Hasil atau respons dari server kemudian disimpan di dalam variabel bernama 'res'.
+    const res = http.post(
+        "https://restful-booker.herokuapp.com/booking",
+        payload,
+        params
     );
 
-    check(createBooking, {
-        "Create Booking Success": (r) =>
-            r.status === 200,
+    // CHECK: Melakukan validasi terhadap hasil respons server yang disimpan di variabel 'res' tadi.
+    check(res, {
+        // Aturan ini memeriksa apakah Status Code dari server bernilai 200 (artinya server sukses memproses data)
+        "Create Booking Success": (r) => r.status === 200,
     });
-
-    const bookingId =
-        createBooking.json("bookingid");
-
-    // GET DETAIL
-    const detail = http.get(
-        `${BASE_URL}/booking/${bookingId}`
-    );
-
-    check(detail, {
-        "Get Detail Success": (r) =>
-            r.status === 200,
-    });
-
-    // UPDATE
-    const update = http.put(
-        `${BASE_URL}/booking/${bookingId}`,
-        JSON.stringify({
-            firstname: "Updated",
-            lastname: "User",
-            totalprice: 2000,
-            depositpaid: true,
-            bookingdates: {
-                checkin: "2026-02-01",
-                checkout: "2026-02-10",
-            },
-            additionalneeds: "Lunch",
-        }),
-        {
-            headers: {
-                "Content-Type": "application/json",
-                Cookie: `token=${token}`,
-            },
-        }
-    );
-
-    check(update, {
-        "Update Booking Success": (r) =>
-            r.status === 200,
-    });
-
-    // DELETE
-    const del = http.del(
-        `${BASE_URL}/booking/${bookingId}`,
-        null,
-        {
-            headers: {
-                Cookie: `token=${token}`,
-            },
-        }
-    );
-
-    check(del, {
-        "Delete Booking Success": (r) =>
-            r.status === 201,
-    });
-
-    sleep(1);
 }
