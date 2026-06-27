@@ -361,15 +361,3 @@ Quality Assurance Engineer
 * API Testing
 * Automation Testing
 * Performance Testing
-
-### GitHub
-
-https://github.com/hast99
-
-### LinkedIn
-
-https://www.linkedin.com/in/hafidh-syahputra
-
----
-
-⭐ Jika repository ini bermanfaat, jangan lupa berikan Star.
